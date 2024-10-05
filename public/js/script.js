@@ -1,43 +1,56 @@
 const socket = io();
-if(navigator.geolocation){
-    navigator.geolocation.watchPosition(
-        (position)=>{
-       const { latitude, longitude } = position.coords;
-       socket.emit("send-location", {latitude,longitude});
+
+// Ask for the user's name when they open the page
+const userName = prompt("Please enter your name:");
+
+// Check if the browser supports geolocation
+if (navigator.geolocation) {
+  navigator.geolocation.watchPosition(
+    (position) => {
+      const { latitude, longitude } = position.coords;
+      socket.emit("send-location", { latitude, longitude, name: userName });
     },
-     (error)=>{
-        console.error(error);
+    (error) => {
+      console.error(error);
     },
     {
-        enableHighAccuracy: true,
-        timeout: 5000,
-        maximumAge: 0,
+      enableHighAccuracy: true,
+      timeout: 5000,
+      maximumAge: 0,
     }
-);
+  );
 }
 
-const map = L.map("map").setView([0,0],16);
+// Initialize the map
+const map = L.map("map").setView([0, 0], 16);
 
+// Add OpenStreetMap tiles
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: "Sheriyans Coding School" 
+  attribution: "Leena Gupta"
 }).addTo(map);
 
+// Object to store markers for each connected user
+const markers = {};
 
+// Listen for 'receive-location' events from the server
+socket.on('receive-location', (data) => {
+  const { id, latitude, longitude, name } = data;
+  map.setView([latitude, longitude], 16);
 
-const markers={};
-socket.on('receive-location',(data)=>{
-    const {id,latitude,longitude} = data;
-    map.setView([latitude,longitude],16);
-    if(markers[id]){
-        markers[id].setLatLng([latitude,longitude]);
-    }else{
-        markers[id] = L.marker([latitude,longitude]).addTo(map);
-    }
-})
+  // If the marker already exists, update its position
+  if (markers[id]) {
+    markers[id].setLatLng([latitude, longitude]);
+  } else {
+    // Otherwise, create a new marker and add a popup with the user's name
+    markers[id] = L.marker([latitude, longitude]).addTo(map);
+    markers[id].bindPopup(`<b>${name}</b>`).openPopup();
+  }
+});
 
-socket.on('user-disconnected',(id)=>{
-    if(markers[id]){
-        map.removeLayer(markers[id]);
-        delete markers[id];
-    }
-})
+// Handle user disconnections and remove their marker
+socket.on('user-disconnected', (id) => {
+  if (markers[id]) {
+    map.removeLayer(markers[id]);
+    delete markers[id];
+  }
+});
