@@ -20,7 +20,7 @@ if (navigator.geolocation) {
     }
   );
 }
-
+//pick it
 // Initialize the map
 const map = L.map("map").setView([0, 0], 16);
 
